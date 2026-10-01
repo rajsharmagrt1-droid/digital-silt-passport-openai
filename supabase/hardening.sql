@@ -79,3 +79,21 @@ drop policy if exists "approved staff update field evidence" on storage.objects;
 create policy "approved staff update field evidence" on storage.objects for update to authenticated
 using(bucket_id='field-evidence' and public.is_approved_staff())
 with check(bucket_id='field-evidence' and public.is_approved_staff());
+
+
+create table if not exists public.field_photos (
+  id uuid primary key default gen_random_uuid(),
+  field_record_id uuid not null references public.field_records(id) on delete cascade,
+  photo_type text not null check (photo_type in ('BEFORE','DURING','AFTER')),
+  storage_path text not null,
+  caption text,
+  uploaded_by uuid references auth.users(id),
+  created_at timestamptz not null default now()
+);
+alter table public.field_photos enable row level security;
+drop policy if exists "public can read field photos" on public.field_photos;
+create policy "public can read field photos" on public.field_photos for select to anon,authenticated using(true);
+drop policy if exists "approved staff can insert field photos" on public.field_photos;
+create policy "approved staff can insert field photos" on public.field_photos for insert to authenticated with check(public.is_approved_staff());
+drop trigger if exists trg_audit_field_photos on public.field_photos;
+create trigger trg_audit_field_photos after insert or update or delete on public.field_photos for each row execute function public.write_audit();
