@@ -47,7 +47,11 @@ create or replace function public.write_audit()
 returns trigger language plpgsql security definer set search_path=public as $$
 declare rid uuid;
 begin
-  rid:=case when TG_OP='DELETE' then old.id else new.id end;
+  if TG_TABLE_NAME='staff_profiles' then
+    rid:=case when TG_OP='DELETE' then old.user_id else new.user_id end;
+  else
+    rid:=case when TG_OP='DELETE' then old.id else new.id end;
+  end if;
   insert into public.audit_log(actor_id,action,table_name,record_id,old_data,new_data)
   values(auth.uid(),TG_OP,TG_TABLE_NAME,rid,
     case when TG_OP in ('UPDATE','DELETE') then to_jsonb(old) end,
